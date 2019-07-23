@@ -18,5 +18,3 @@ Browse your computer for the xlam (Recall the location) and open it.
 Add a checkmark to the addin.
 
 Now the addin is in your excel and you can use it with any document. However, you need an icon on the tool bar that you click when you want to use the Quotation Form Application. In order to do that, follow the following tutorial on how to add new tabs on your excel: https://www.homeandlearn.org/customize_the_excel_ribbon.html . Our User Form is called "Quotation" so instead of "CallUserForm" look for "Quotation"
-
-NOTE: This addIn has to be installed into your excel and you also need to create Net Tab where you will add the "Quotation" Macro on the ribbons. This feature also needs you to have your "Price Lookup" Sheet in the same sheet as the quotation otherwise edit the code as required.
