@@ -13,6 +13,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
+
 ' Author: Brandon Bwanakocha
 ' Purpose: This function controlls what happenes when the "Submit" Button is clicked
 ' Parameters: Void
@@ -23,69 +25,26 @@ Dim str As String   ' String for the Faults cell
 Dim str_1 As String  ' String for the Repairs cell
 Dim BoxName As String
 Dim PartNumbers As String
-Dim mySelect As Range
-Dim mySelect_1 As Range
-Dim S900Sel As Range
-Dim S900Sel_1 As Range
-Dim S920Sel_1 As Range
-Dim S920Sel As Range
 Dim count As Integer
 Dim cCont As Control
-Dim trig As Boolean
-Dim trig_1 As Boolean
 Dim Price_Charged As Double
 Dim i As Integer
 Dim strings() As String
-
-Dim box2str As String
-Dim box3str As String
+Dim PlaceHolder
 
 
-' Select ranges for S900 VLookup
-Set S900Sel = Worksheets("Parts").Range("A4:B30") ' Part Number Selection
-Set S900Sel_1 = Worksheets("Parts").Range("B4:C30") ' Price Selection
 
-' Select ranges for S920 Vlookup
-Set S920Sel = Worksheets("Parts").Range("A32:B59") ' Part Number Selection
-Set S920Sel_1 = Worksheets("Parts").Range("B32:C59") ' Price Selection
-
-
-str = ""
-str_1 = ""
-box2str = ""
-box3str = ""
-trig = True
-trig_1 = True
 i = 0
  
 ' Get the strings that are contained int combo boxes and text boxes
 
-strings = getStr(str, str_1, trig, trig_1)
+strings = getStr()
 str = strings(0)
 str_1 = strings(1)
 
-' Go to the second column of the table
-On Error Resume Next
-If Not (ActiveSheet.ListObjects(1).ListColumns = 2) Then
-On Error Resume Next
-ActiveSheet.ListObjects(1).DataBodyRange(1, 2).Select
-End If
+PlaceHolder = FindSecondColumn()
+PlaceHolder = GoDownRows()
 
-
-' Find the next empty cell in the second column of the table
-Do While Not (ActiveCell.Offset(i, 0).Value = "")
- i = i + 1
-Loop
-ActiveCell.Offset(i, 0).Select
-
-
-' Check whether current row is outside the table and add a row if so
-
-If Intersect(ActiveCell, ActiveSheet.ListObjects(1).DataBodyRange) Is Nothing Then
-      ActiveSheet.ListObjects(1).ListRows.Add
-      ActiveCell.Offset(0, -1).Value = ActiveCell.Offset(-1, -1).Value
-       
-End If
 
 ' If we do not have a terminal type then we do nothing but just display a reminder
 If ActiveCell.Offset(0, -1) = "" Then
@@ -93,6 +52,7 @@ MsgBox "Please Enter Terminal Type", vbOKOnly + vbExclamation, "Liquid Form"
  
 Else
  ' Clear contents of every object on the Form
+ 
    ActiveCell.Value = TextBox1.Value
    TextBox1.Value = ""
    TextBox2.Value = ""
@@ -112,35 +72,33 @@ Else
 ActiveCell.Offset(0, 1).Value = str ' Update the value of the selected cell
 ActiveCell.Offset(0, 2).Value = str_1 ' Move to the next cell
 
-
-' Check if S900 and see
-If ActiveCell.Offset(0, -1).Value = "S900" Then
- Set mySelect = S900Sel
- Set mySelect_1 = S900Sel_1
-End If
-
-' Check if S920
-If ActiveCell.Offset(0, -1).Value = "S920" Then
-Set mySelect = S920Sel
-Set mySelect_1 = S920Sel_1
-End If
-
 ' Fetch Part Numbers
-PartNumbers = LParts(ActiveCell.Offset(0, 2), mySelect)
+PartNumbers = LParts(ActiveCell.Offset(0, 2))
 
 ActiveCell.Offset(0, 3).Value = CStr(PartNumbers)
+
 
 If CStr(PartNumbers) = "" Then
 ActiveCell.Offset(0, 3).Value = "-"
 End If
 
 ' Calculate Total Price
-Price_Charged = LPrice(ActiveCell.Offset(0, 3), mySelect_1)
+Price_Charged = LPrice(ActiveCell.Offset(0, 3))
+
+
+' Check to see if Terminal Is Beyond Repair
+
+If Price_Charged > 0.75 * BPrice Then
+MsgBox "Beyond Economic Repair", vbCritical, "Liquid Form"
+ActiveCell.Offset(0, 3).Value = "BER"
+ActiveCell.Offset(0, 4).Value = 0
+
+Else
 ActiveCell.Offset(0, 4).Value = Price_Charged
 
-Do
-ActiveCell.Offset(1, 0).Select ' Go to the next empty cell on second column in whatever object we have
-Loop While Not (ActiveCell.Value = "")
+End If
+
+PlaceHolder = GoDownRows()
 End If
 End Sub
 
