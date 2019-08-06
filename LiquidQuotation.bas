@@ -1,4 +1,337 @@
 Attribute VB_Name = "LiquidQuotation"
+Public BPrice As Double
+Public PSize As Integer ' Part Number Array Size
+Public userSelect As String
+Public labour As Double
+Public labFlag As Boolean
+Public laberr As String
+
+
+Function LabPrice(ByVal Repair As String)
+
+Dim ws As Worksheet
+Dim lRow As Long
+
+
+Set ws = Worksheets("Countries")
+
+lRow = ws.Range("J3").End(xlDown).Row
+On Error GoTo errhandler
+LabPrice = Application.WorksheetFunction.VLookup(Repair, ws.Range("J3:K" & lRow), 2, 0)
+
+If Application.WorksheetFunction.VLookup(Repair, ws.Range("J3:K" & lRow), 2, 0) = "" Then
+GoTo handler
+End If
+
+
+
+
+Exit Function
+
+errhandler:
+If labFlag = False Then
+laberr = laberr & Repair & ", "
+End If
+Exit Function
+
+handler:
+
+If labFlag = False Then
+laberr = laberr & Repair & " "
+End If
+
+End Function
+
+
+
+
+' Author: Brandon Bwanakocha
+' Purpose: Calculates Selling Price from given Cost price
+' Parameters: CPrice - Cost Price of Terminal
+' Return Type: Double
+
+Function SPrice(ByVal CPrice)
+
+Dim Shipping As Double
+Dim Duty As Double
+Dim PSD As Double ' Price with Shipping and Duty included
+Dim Country As String
+Dim mySelect As Range
+Dim Margin As Double
+Dim lRow As Long
+
+
+lRow = Worksheets("Countries").Range("A3").End(xlDown).Row
+
+Set mySelect = Worksheets("Countries").Range("A3:E" & lRow)
+
+Country = Worksheets("Quote").Range("E5")
+Shipping = Application.WorksheetFunction.VLookup(Country, mySelect, 3, 0)
+Duty = Application.WorksheetFunction.VLookup(Country, mySelect, 4, 0)
+Margin = Application.WorksheetFunction.VLookup(Country, mySelect, 5, 0)
+
+Shipping = (Shipping) * CPrice
+Duty = (Duty) * (Shipping + CPrice)
+PSD = CPrice + Shipping + Duty
+
+SPrice = PSD / (1 - Margin)
+
+
+End Function
+
+' Author: Brandon Bwanakocha
+' Purpose: Fetches the buying price for the given terminal type from the "Countries' Column
+' Parameters: Void
+'Return Type : Void
+
+Function BuyingPrice()
+
+Dim ModelNo As String
+Dim lRow As Long
+Dim ws As Worksheet
+
+Set ws = Worksheets("Countries")
+
+lRow = ws.Range("M3").End(xlDown).Row
+
+ModelNo = ActiveCell.Offset(0, -1).Value
+On Error GoTo errhandler
+BPrice = Application.WorksheetFunction.VLookup(ModelNo, ws.Range("M3:N" & lRow), 2, 0)
+
+If Application.WorksheetFunction.VLookup(ModelNo, ws.Range("M3:N" & lRow), 2, 0) = "" Then
+BPrice = 450
+End If
+
+Exit Function
+
+errhandler:
+BPrice = 450
+End Function
+
+' Author: Brandon Bwanakocha
+' Purpose: Looks for multiple matches of a string in the second column of the master sheet
+' Parameters: str - string we are looking for
+' Return type: str - a string with row indexes of occurances of matches
+
+Function look(str As String)
+Dim rng As Range
+Dim temp As String
+Dim temp1 As String
+Dim rows() As String
+Dim size As Integer
+Dim i As Integer
+Dim PNumbers As String
+Dim parts() As String
+Dim s As String
+Dim mystart As String
+Dim myend As String
+Dim lRow As Long
+Dim ws As Worksheet
+
+labour = 0
+labFlag = False
+
+
+Set ws = Worksheets("Master")
+mystart = "B5"
+
+PSize = 0
+
+temp = ""
+temp1 = ""
+
+    lRow = ws.Range("B6").End(xlDown).Row
+ 
+                    
+    myend = "B" & lRow
+
+
+For Each cell In Worksheets("Master").Range(mystart & ":" & myend)
+If InStr(cell.Value, " - ") Then
+
+parts = Split(Trim(cell.Value), " - ")
+If UBound(parts()) > 1 Then
+If LCase(parts(1)) = LCase(ActiveCell.Offset(0, -1).Value) Then
+If LCase(parts(2)) = LCase(str) Then
+
+temp = temp & CStr(cell.Row) & " "
+
+labour = LabPrice(parts(2))
+labFlag = True
+End If
+End If
+End If
+End If
+
+cont:
+
+   Next cell
+
+Do
+  temp1 = temp
+  temp = Replace(temp, "  ", " ") 'remove multiple white spaces
+Loop Until temp1 = temp
+
+rows = Split(Trim(temp), " ")
+size = UBound(rows()) + 1
+
+
+For i = 0 To size - 1
+PNumbers = PNumbers & Application.WorksheetFunction.Index(Worksheets("Master").Range("A1:A" & lRow), CInt(rows(i))) & " "
+Next i
+
+PSize = size
+look = PNumbers
+End Function
+
+
+' Author: Brandon Bwanakocha
+' Purpose: Prepares our popup window which we use to select in case of multiple occurances of the same description
+' Parameters: str - string containing all part numbers that correspond to the same description
+'             cap - Whatever is going to display on the label
+' Return type: void
+
+Function popupConfig(ByVal str As String, ByVal cap As String)
+
+    Dim OptionList(0 To 50) As String
+    Dim btn As CommandButton
+    Set btn = LiquidForm1.CommandButton1
+    Dim opt As Control
+    Dim s As Variant
+    Dim i As Integer
+    Dim PlaceHolder
+    Dim PartNumbers() As String
+
+    
+    
+    PartNumbers = Split(Trim(str), " ")
+    i = 0
+
+    For i = 0 To PSize - 1
+    OptionList(i) = Trim(PartNumbers(i))
+    
+    Next i
+    
+    i = 0
+
+    For Each s In OptionList
+   If i < PSize Then
+        Set opt = LiquidForm1.Controls.Add("Forms.OptionButton.1", "radioBtn" & i, True)
+        
+        opt.Caption = s
+        opt.FontSize = 8
+        opt.Height = 20
+        opt.Top = opt.Height * i + 20
+        opt.GroupName = "Options"
+        opt.Left = 10
+        LiquidForm1.Height = opt.Height * (i + 2) + 20
+        opt.SpecialEffect = 0
+        
+        
+        End If
+
+        i = i + 1
+       
+    Next
+    
+        LiquidForm1.Width = opt.Width
+        
+        LiquidForm1.Label1.BackColor = RGB(231, 245, 251)
+        LiquidForm1.Label1.BorderColor = RGB(134, 191, 160)
+        LiquidForm1.Label1.Caption = Trim(cap)
+        
+
+    btn.Caption = "Submit"
+    
+    btn.Top = LiquidForm1.Height - btn.Height + (0.5 * opt.Height)
+    btn.Left = (LiquidForm1.Width * 0.5) - (btn.Width * 0.5) - 3
+
+   
+
+    LiquidForm1.Height = LiquidForm1.Height + btn.Height + (1.2 * opt.Height)
+  
+
+End Function
+
+'Author: Brandon Bwanakocha
+'Purpose: Adds an extension to the terminal type name
+'Parameters: Void
+'Return type: String
+
+Function TerminalType()
+Dim str As String
+Dim ModelNo As String
+
+ModelNo = ActiveCell.Offset(0, -1).Value
+
+Select Case ModelNo
+
+Case "S900"
+str = "PAX - " & ModelNo & " - "
+
+
+
+Case "S920"
+str = "PAX - " & ModelNo & " - "
+
+
+Case "S300"
+str = "PAX - " & ModelNo & " - "
+
+Case "D200"
+str = "PAX - " & ModelNo & " - "
+
+Case "D180"
+str = "PAX - " & ModelNo & " - "
+
+End Select
+
+TerminalType = str
+End Function
+
+
+
+ 'Author: Brandon Bwanakocha
+ 'Purpose: Finds Second Column on table
+ 'Parameters: void
+ 'Return Type: Void
+ 
+ Function FindSecondColumn()
+ 
+ On Error Resume Next
+ If Not (ActiveSheet.ListObjects(1).ListColumns = 2) Then
+ On Error Resume Next
+ ActiveSheet.ListObjects(1).DataBodyRange(1, 2).Select
+ End If
+ 
+ End Function
+
+
+
+'Author: Brandon Bwanakocha
+'Purpose: Runs down the current Column until it finds empty Cell
+'Parameters: Void
+'Return type: Void
+
+Function GoDownRows()
+Do While Not (ActiveCell.Offset(i, 0).Value = "")
+ i = i + 1
+Loop
+ActiveCell.Offset(i, 0).Select
+
+' Check whether current row is outside the table and add a row if so
+On Error Resume Next
+If Intersect(ActiveCell, ActiveSheet.ListObjects(1).DataBodyRange) Is Nothing Then
+      ActiveSheet.ListObjects(1).ListRows.Add
+      ActiveCell.Offset(0, -1).Value = ActiveCell.Offset(-1, -1).Value
+       
+End If
+
+End Function
+
+
+
+
 ' Author: Brandon Bwanakocha
 ' Title: Liquid Parts - LParts When Referencing
 ' Purpose: Looks Up Part Numbers depending on Name of part (Yikes)
@@ -7,30 +340,176 @@ Attribute VB_Name = "LiquidQuotation"
 
 
 
-Function LParts(CellRef As Range, mySelect As Range)
+Function LParts(CellRef As Range)
 Dim PartName As String
 Dim Result() As String
 Dim str As String
-Dim Size As Integer
+Dim errstr As String
+Dim size As Integer
 Dim count As Integer
+Dim temp As String
+Dim PlaceHolder
 
 
 
 PartName = CellRef
 
 Result = Split(Trim(PartName), ",") ' Split the part name on commas
-Size = UBound(Result()) + 1
+size = UBound(Result()) + 1
+
 str = ""
-For count = 0 To Size - 1
-On Error Resume Next
-str = str & " " & (Application.WorksheetFunction.VLookup(Trim(Result(count)), mySelect, 2, 0))
-Next count
+errstr = ""
+laberr = ""
+
+For count = 0 To size - 1
+
+On Error GoTo errhandler ' In case of error, catch the error!
+temp = look(Trim(Result(count)))
+If temp = "" Then
+GoTo handler
+End If
+
+If PSize > 1 Then
+
+PlaceHolder = popupConfig(Trim(temp), Trim(Result(count)))
+LiquidForm1.Show
+str = str & Trim(CStr(userSelect)) & Chr(10)
+Else
+ 
+ str = str & temp & Chr(10)
+End If
+
+
+PSize = 0
+counter:
+        Next count
+
+If Right(str, 1) = vbLf Then str = Left(str, Len(str) - 1) ' Remove the last new line character
+
+
 
 
 
 LParts = Trim(str)
 
+
+If Not (errstr = "") Then
+MsgBox "No Part Number found for: " & errstr, vbExclamation, "Liquid Form"
+End If
+
+If Not (laberr = "") Then
+MsgBox "No Labour price found for: " & laberr, vbCritical
+End If
+
+
+Exit Function
+' Error Handler which exercutes when we encounter an error with our lookup methods
+handler:
+
+        ' Try using a different extension like "S900/S920" amd of that doesn't work then quit lmao
+        
+        str = str + "NPN" + Chr(10)
+        errstr = errstr + Trim(Result(count)) + ", "
+        GoTo counter ' Go back to the loop
+errhandler:
+        str = str + "NPN" + Chr(10)
+        errstr = errstr + Trim(Result(count)) + ", "
+        Resume counter ' Go back to the loop
+
+
+
 End Function
+
+' Author: Brandon Bwanakocha
+' Title: Liquid Price, LPrice (When referencing)
+' Date: 27/06/2019
+' Purpose: Calculates the charge for a repair based on extra materials added
+' Parameters: CellRef - Cell containing Part Numbers
+              ' mySelect: Table Array containing prices per part Number
+              
+
+Function LPrice(CellRef As Range)
+Dim Result() As String
+Dim PartNumber As String
+
+Dim count As Integer
+Dim size As Integer
+Dim Charge As Double
+Dim lookupval As Long
+Dim temp As String
+Dim errstr As String
+Dim lRow As Long
+
+
+lRow = Worksheets("Master").Range("B5").End(xlDown).Row
+
+errstr = ""
+
+
+PartNumber = CellRef
+
+' Remove all the extra blank spaces that may be entered by user
+PartNumber = Replace(PartNumber, vbLf, " ")
+
+PartNumber = Replace(PartNumber, "NPN", "")
+PartNumber = Trim(PartNumber)
+
+
+
+Do
+  temp = PartNumber
+  PartNumber = Replace(PartNumber, "  ", " ") 'remove multiple white spaces
+Loop Until temp = PartNumber
+
+
+Result = Split(Trim(PartNumber), " ") ' Trim to remove begining and rear spaces
+size = UBound(Result()) + 1
+Charge = 0
+
+'Iterate through single cell checking all part numbers
+For count = 0 To size - 1
+On Error GoTo handler
+Charge = Charge + SPrice(Application.WorksheetFunction.VLookup(Trim(Result(count)), Worksheets("Master").Range("A5:I" & lRow), 9, 0)) + labour  ' Lookup spare part price and add that to total charge on customer
+If Application.WorksheetFunction.VLookup(Trim(Result(count)), Worksheets("Master").Range("A5:I" & lRow), 9, 0) = "" Then
+errstr = Result(count)
+End If
+
+counter:
+      Next count
+
+
+If size < 3 Then
+  LPrice = 12.5 + Charge ' If we used less than 3 extra parts then charge Labour
+Else
+ LPrice = Charge  ' Charge for just the extra parts if we used more than three spare parts
+End If
+
+If Not (errstr = "") Then
+MsgBox "No price found for: " & errstr, vbInformation, "Liquid Form"
+End If
+
+Exit Function
+handler:
+        errstr = errstr + Result(count) + ","
+       ' Charge = IIf(size > 3, Charge, Charge + 12.5)
+        Resume counter
+
+End Function
+
+'Author: Unknown
+'Source: Stack Overflow
+'Purpose: Checks if User form is still open
+
+'Private Function IsLoaded(ByVal formName As String) As Boolean
+ '   Dim frm As Object
+  '  For Each frm In VBA.UserForms
+   '     If frm.Name = formName Then
+    '        IsLoaded = True
+     '       Exit Function
+      '  End If
+    'Nex 't frm
+    'IsLoaded = False
+'End Function
 
 ' Author: Brandon Bwanakocha
 ' Title: getStr
@@ -40,7 +519,23 @@ End Function
 '            trig - Boolean boolean flag
 '            trig_1 - Boolean flag
 
-Function getStr(str As String, str_1 As String, trig As Boolean, trig_1 As Boolean)
+Function getStr()
+Dim str As String
+Dim str_1 As String
+Dim trig As Boolean
+Dim trig_1 As Boolean
+Dim boxstr As String
+Dim box2str As String
+Dim box3str As String
+
+
+str = ""
+str_1 = ""
+trig = True
+trig_1 = True
+box2str = ""
+box3str = ""
+
 
 Dim Result(2) As String
 
@@ -180,54 +675,7 @@ Dim Result(2) As String
 getStr = Result
 End Function
 
-' Author: Brandon Bwanakocha
-' Title: Liquid Price, LPrice (When referencing)
-' Date: 27/06/2019
-' Purpose: Calculates the charge for a repair based on extra materials added
-' Parameters: CellRef - Cell containing Part Numbers
-              ' mySelect: Table Array containing prices per part Number
-              
 
-Function LPrice(CellRef As Range, mySelect As Range)
-Dim Result() As String
-Dim PartNumber As String
-
-Dim count As Integer
-Dim Size As Integer
-Dim Charge As Double
-Dim lookupval As Long
-Dim temp As String
-
-
-PartNumber = CellRef
-
-' Remove all the extra blank spaces that may be entered by user
-
-Do
-  temp = PartNumber
-  PartNumber = Replace(PartNumber, "  ", " ") 'remove multiple white spaces
-Loop Until temp = PartNumber
-
-
-Result = Split(Trim(PartNumber), " ") ' Trim to remove begining and rear spaces
-Size = UBound(Result()) + 1
-Charge = 0
-
-'Iterate through single cell checking all part numbers
-For count = 0 To Size - 1
-On Error Resume Next
-Charge = Charge + Application.WorksheetFunction.VLookup(Trim(Result(count)), mySelect, 2, 0) ' Lookup spare part price and add that to total charge on customer
-Next count
-
-
-If Size < 3 Then
-  LPrice = 12.5 + Charge ' If we used less than 3 extra parts then charge Labour
-Else
- LPrice = Charge ' Charge for just the extra parts if we used more than three spare parts
-End If
-
-
-End Function
 
 ' Author: Brandon Bwanakocha
 ' Purpose: This function initializes  the combo boxes when the quotation Macro is summoned
@@ -236,6 +684,11 @@ End Function
 
 
 Sub Quotation()
+
+Dim OpenForms
+Dim PlaceHolder
+
+BPrice = 450
 
 ' Add items to the combo boxes which are the drop down menus.
 
@@ -802,13 +1255,25 @@ With LiquidForm.ComboBox10
 
 End With
 
+'LiquidForm1.Show vbModeless
+
+'Do While IsLoaded("LiquidForm1")
+ '   OpenForms = DoEvents() 'Hand control to the Operating System
+'Loop
+'------------------------------------------------------------------------------------------------------------------------------
+
+
+'--------------------------------------------------------------------------------------------------------------------------------------------
 
 LiquidForm.Show vbModeless
 
-On Error Resume Next ' In case of error skip this line
-ActiveSheet.ListObjects(1).DataBodyRange(1, 2).Select ' Select the second columb in whatever table exists on the sheet
+PlaceHolder = FindSecondColumn()
+PlaceHolder = GoDownRows()
 
-Do While Not (ActiveCell.Value = "") ' Go down until you find an empty cell
- ActiveCell.Offset(1, 0).Select
-Loop
+PaceHolder = BuyingPrice()
 End Sub
+
+
+
+
+
