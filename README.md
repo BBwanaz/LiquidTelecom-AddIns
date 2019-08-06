@@ -25,11 +25,10 @@ Now the addin is in your excel and you can use it with any document. However, yo
 Please see this tutorial on how to add the "Developer" Tab on your Excel and Access the files. https://youtu.be/JLQ8OuW0FlY. After adding the Developer Tab, click on "Visual Basic" and And a new window will pop up. On the left of the window, click on "VBA Project (LiquidAddin.xlam) And this will reveal contents of the addin. There are two important files in the addin. The first one you can find it in the part where it says "Forms". This is basically our User Interface which can be edited by drag and drop. Double clicking on that interface will reveal the code for functionality of the components on the form such as text boxes. The second important file is in Modules and this contains most of our useful functions. Below is an overview of these functions:
 
 
-# Functions in the LiquidForm module
+# Troubleshooting
+If you have your price in the price column in Master, and the app still tells you that No price found, try changing the formating of the first column into text by doing this.
 
-These are the functions that determine what happens when we press the submit button, Cancel Button, and any other button.
-
-Here are useful tutorials for those who are not familiar with VBA but would like to help develop the Form Further:
+Use the Text to columns option to convert exponential notation to text (Click on column header, click Text to data, then Delimited, Next, untick all delimiter boxes, Select Text in Column data format and then Finish) to have the values converted to text and immediately displayed as 15 digit number.
 
 https://trumpexcel.com/excel-add-in/ : How to create a user form.
 
